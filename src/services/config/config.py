@@ -24,7 +24,7 @@ class FTPTask:
     transfer_method: FTPTransferMethod = FTPTransferMethod.SEND
     signal_file_path: str = ''
     signal_text: str = ''
-    enabled: bool = True
+    is_enabled: bool = True
 
 
 class ConfigDBService:
@@ -52,23 +52,25 @@ class ConfigDBService:
                 transfer_method TEXT NOT NULL,  
                 signal_file_path TEXT NOT NULL, 
                 signal_text TEXT NOT NULL, 
-                enabled BOOLEAN NOT NULL
+                is_enabled BOOLEAN NOT NULL
             )'''
         )
 
     def create_task(self, task: FTPTask) -> int:
         response = self._driver.send_request(
             sql_query='''
-                      INSERT INTO ftp_tasks(local_dir,
-                                            ftp_host,
-                                            ftp_port,
-                                            ftp_dir,
-                                            ftp_login,
-                                            ftp_password,
-                                            transfer_method,
-                                            signal_file_path,
-                                            signal_text,
-                                            enabled)
+                      INSERT INTO ftp_tasks(
+                          local_dir,
+                          ftp_host,
+                          ftp_port,
+                          ftp_dir,
+                          ftp_login,
+                          ftp_password,
+                          transfer_method,
+                          signal_file_path,
+                          signal_text,
+                          is_enabled
+                      )
                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                       ''',
             params=(
@@ -81,7 +83,7 @@ class ConfigDBService:
                 task.transfer_method.value,
                 task.signal_file_path,
                 task.signal_text,
-                task.enabled,
+                task.is_enabled,
             ),
             write=True,
         )
@@ -117,7 +119,7 @@ class ConfigDBService:
             transfer_method=FTPTransferMethod(row['transfer_method']),
             signal_file_path=row['signal_file_path'],
             signal_text=row['signal_text'],
-            enabled=bool(row['enabled']),
+            is_enabled=bool(row['is_enabled']),
         )
         return task_from_row
 
@@ -137,7 +139,7 @@ class ConfigDBService:
                           transfer_method  = ?,
                           signal_file_path = ?,
                           signal_text      = ?,
-                          enabled          = ?
+                          is_enabled          = ?
                       WHERE id = ?
                       ''',
             params=(
@@ -150,7 +152,7 @@ class ConfigDBService:
                 task.transfer_method.value,
                 task.signal_file_path,
                 task.signal_text,
-                task.enabled,
+                task.is_enabled,
                 task.id,
             ),
             write=True,
