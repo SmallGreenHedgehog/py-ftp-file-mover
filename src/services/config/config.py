@@ -32,10 +32,29 @@ class ConfigDBService:
 
     def __init__(self, *args, **kwargs):
         self.__initialize_driver()
+        self.__init_config()
 
     def __initialize_driver(self):
         driver_class: Type[SQLDriver] = cast(Type[SQLDriver], locate(self._driver_class_path))
         self._driver = driver_class(db_path=settings.CONFIG_DB_PATH)
+
+    def __init_config(self):
+        self._driver.send_request(
+            sql_query='''
+            CREATE TABLE IF NOT EXISTS ftp_tasks (  
+                id SERIAL PRIMARY KEY, 
+                local_dir TEXT NOT NULL, 
+                ftp_host TEXT NOT NULL, 
+                ftp_port INTEGER NOT NULL,  
+                ftp_dir TEXT NOT NULL, 
+                ftp_login TEXT NOT NULL, 
+                ftp_password TEXT NOT NULL, 
+                transfer_method TEXT NOT NULL,  
+                signal_file_path TEXT NOT NULL, 
+                signal_text TEXT NOT NULL, 
+                enabled BOOLEAN NOT NULL
+            )'''
+        )
 
     def create_task(self, task: FTPTask) -> int:
         response = self._driver.send_request(
