@@ -1,33 +1,31 @@
-from dataclasses import dataclass
-from enum import Enum
+from abc import ABC, abstractmethod
 from pydoc import locate
 from typing import Optional, Type, cast
 
-from src import settings
-from src.services.config.drivers import SQLDriver
+import settings
+from entities.ftp_tasks import FTPTransferMethod, FTPTask
+from services.config.drivers import SQLDriver
 
 
-class FTPTransferMethod(str, Enum):
-    SEND = 'send'
-    RECEIVE = 'receive'
+class ConfigRepository(ABC):
+    @abstractmethod
+    def create_task(self, task: FTPTask) -> int:
+        pass
+
+    @abstractmethod
+    def get_tasks(self, task_id: Optional[int] = None) -> list[FTPTask]:
+        pass
+
+    @abstractmethod
+    def update_task(self, task: FTPTask) -> bool:
+        pass
+
+    @abstractmethod
+    def delete_task(self, task_id: int) -> bool:
+        pass
 
 
-@dataclass
-class FTPTask:
-    id: Optional[int] = None
-    local_dir: str = ''
-    ftp_host: str = ''
-    ftp_port: int = 21
-    ftp_dir: str = ''
-    ftp_login: str = ''
-    ftp_password: str = ''
-    transfer_method: FTPTransferMethod = FTPTransferMethod.SEND
-    signal_file_path: str = ''
-    signal_text: str = ''
-    is_enabled: bool = True
-
-
-class ConfigDBService:
+class SQLiteConfigRepository(ConfigRepository):
     _driver_class_path: str = 'services.config.drivers.SQLiteDriver'
 
     def __init__(self, *args, **kwargs):
@@ -41,35 +39,36 @@ class ConfigDBService:
     def __init_config(self):
         self._driver.send_request(
             sql_query='''
-            CREATE TABLE IF NOT EXISTS ftp_tasks (  
-                id SERIAL PRIMARY KEY, 
-                local_dir TEXT NOT NULL, 
-                ftp_host TEXT NOT NULL, 
-                ftp_port INTEGER NOT NULL,  
-                ftp_dir TEXT NOT NULL, 
-                ftp_login TEXT NOT NULL, 
-                ftp_password TEXT NOT NULL, 
-                transfer_method TEXT NOT NULL,  
-                signal_file_path TEXT NOT NULL, 
-                signal_text TEXT NOT NULL, 
-                is_enabled BOOLEAN NOT NULL
-            )'''
+                      CREATE TABLE IF NOT EXISTS ftp_tasks
+                      (
+                          id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          local_dir        TEXT    NOT NULL,
+                          ftp_host         TEXT    NOT NULL,
+                          ftp_port         INTEGER NOT NULL,
+                          ftp_dir          TEXT    NOT NULL,
+                          ftp_login        TEXT    NOT NULL,
+                          ftp_password     TEXT    NOT NULL,
+                          transfer_method  TEXT    NOT NULL,
+                          signal_file_path TEXT    NOT NULL,
+                          signal_text      TEXT    NOT NULL,
+                          is_enabled       BOOLEAN NOT NULL
+                      )'''
         )
 
-    def create_task(self, task: FTPTask) -> int:
+    def create_task(self, task: FTPTask) -> bool:
         response = self._driver.send_request(
             sql_query='''
                       INSERT INTO ftp_tasks(
-                          local_dir,
-                          ftp_host,
-                          ftp_port,
-                          ftp_dir,
-                          ftp_login,
-                          ftp_password,
-                          transfer_method,
-                          signal_file_path,
-                          signal_text,
-                          is_enabled
+                        local_dir,
+                        ftp_host,
+                        ftp_port,
+                        ftp_dir,
+                        ftp_login,
+                        ftp_password,
+                        transfer_method,
+                        signal_file_path,
+                        signal_text,
+                        is_enabled
                       )
                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                       ''',
@@ -87,7 +86,7 @@ class ConfigDBService:
             ),
             write=True,
         )
-        result = response['rowcount']
+        result = bool(response['rowcount'])
         return result
 
     def get_tasks(self, task_id: Optional[int] = None) -> list[FTPTask]:
@@ -139,7 +138,7 @@ class ConfigDBService:
                           transfer_method  = ?,
                           signal_file_path = ?,
                           signal_text      = ?,
-                          is_enabled          = ?
+                          is_enabled       = ?
                       WHERE id = ?
                       ''',
             params=(
@@ -168,3 +167,7 @@ class ConfigDBService:
         )
         result = response['rowcount'] > 0
         return result
+
+
+def get_config_repository() -> ConfigRepository:
+    return SQLiteConfigRepository()

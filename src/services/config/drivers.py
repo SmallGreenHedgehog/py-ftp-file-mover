@@ -3,7 +3,7 @@ from abc import abstractmethod, ABC
 
 from loguru import logger
 
-from src import settings
+import settings
 
 logger.add(f'{settings.LOGS_DIR}/service.log', rotation='50 MB', retention=10, compression='gz')
 
